@@ -137,5 +137,68 @@ void main() {
         expect(item.urgency, UrgencyLevel.ok);
       });
     });
+
+    group('serialization and null safety', () {
+      test('toJson returns expected map', () {
+        const item = FoodItem(
+          id: '123',
+          name: 'Bread',
+          category: 'Bakery',
+          quantity: 2,
+          unit: 'loaf',
+          expiresOn: 'May 30, 2026',
+          daysUntilExpiry: 5,
+          urgency: UrgencyLevel.soon,
+        );
+        final json = item.toJson();
+        expect(json['id'], '123');
+        expect(json['name'], 'Bread');
+        expect(json['category'], 'Bakery');
+        expect(json['quantity'], 2);
+        expect(json['unit'], 'loaf');
+        expect(json['expiresOn'], 'May 30, 2026');
+        expect(json['daysUntilExpiry'], 5);
+        expect(json['urgency'], 'soon');
+      });
+
+      test('fromJson parses standard structure correctly', () {
+        final raw = {
+          'id': 'abc',
+          'name': 'Milk',
+          'category': 'Dairy',
+          'quantity': 1,
+          'unit': 'bottle',
+          'expiresOn': 'Jun 2, 2026',
+          'daysUntilExpiry': 4,
+          'urgency': 'soon',
+        };
+        final item = FoodItem.fromJson(raw);
+        expect(item.id, 'abc');
+        expect(item.name, 'Milk');
+        expect(item.category, 'Dairy');
+        expect(item.quantity, 1);
+        expect(item.unit, 'bottle');
+        expect(item.expiresOn, 'Jun 2, 2026');
+        expect(item.daysUntilExpiry, 4);
+        expect(item.urgency, UrgencyLevel.soon);
+      });
+
+      test('fromJson handles null / missing fields safely', () {
+        final item = FoodItem.fromJson({});
+        expect(item.id, '');
+        expect(item.name, '');
+        expect(item.category, '');
+        expect(item.quantity, 1);
+        expect(item.unit, '');
+        expect(item.expiresOn, '');
+        expect(item.daysUntilExpiry, 0);
+        expect(item.urgency, UrgencyLevel.ok);
+      });
+
+      test('fromJson handles case-insensitive urgency name matching', () {
+        final item = FoodItem.fromJson({'urgency': 'URGENT'});
+        expect(item.urgency, UrgencyLevel.urgent);
+      });
+    });
   });
 }

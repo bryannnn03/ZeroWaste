@@ -21,7 +21,10 @@ String buildTodayStr() =>
 /// Classifies a given expiry date into a bucket name.
 /// Returns 'expired', 'today', 'tomorrow', 'soon', 'nearing', or 'irrelevant'.
 String classifyExpiry(DateTime expiry) {
-  final days = expiry.difference(DateTime.now()).inDays;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final expiryDate = DateTime(expiry.year, expiry.month, expiry.day);
+  final days = expiryDate.difference(today).inDays;
   if (days < 0)  return 'expired';
   if (days == 0) return 'today';
   if (days == 1) return 'tomorrow';
@@ -197,6 +200,26 @@ void main() {
           final key = buildAggregationKey(suffix, todayStr);
           expect(alreadyNotifiedKeys.contains(key), isFalse);
         }
+      });
+    });
+
+    group('opt-out handling and preferences', () {
+      test('when expiry_notifications is false in metadata, alerts are disabled', () {
+        final meta = {'expiry_notifications': false};
+        final enabled = meta['expiry_notifications'] as bool? ?? true;
+        expect(enabled, isFalse);
+      });
+
+      test('when expiry_notifications is true, alerts are enabled', () {
+        final meta = {'expiry_notifications': true};
+        final enabled = meta['expiry_notifications'] as bool? ?? true;
+        expect(enabled, isTrue);
+      });
+
+      test('defaults to enabled when metadata key is missing', () {
+        final meta = <String, dynamic>{};
+        final enabled = meta['expiry_notifications'] as bool? ?? true;
+        expect(enabled, isTrue);
       });
     });
   });

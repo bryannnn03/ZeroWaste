@@ -78,4 +78,37 @@ class MealSuggestion {
         return 'Hard';
     }
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'timeMinutes': timeMinutes,
+        'difficulty': difficulty.name,
+        'ingredients': ingredients,
+        'isPriority': isPriority,
+        'priorityIngredients': priorityIngredients,
+        'steps': steps,
+        'consumedItemIds': consumedItemIds,
+        'isApproved': isApproved,
+      };
+
+  factory MealSuggestion.fromJson(Map<String, dynamic> json) {
+    final diffStr = json['difficulty'] as String? ?? 'medium';
+    final diff = DifficultyLevel.values.firstWhere(
+      (e) => e.name == diffStr.toLowerCase(),
+      orElse: () => DifficultyLevel.medium,
+    );
+    return MealSuggestion(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? '',
+      timeMinutes: (json['timeMinutes'] as num?)?.toInt() ?? 0,
+      difficulty: diff,
+      ingredients: List<String>.from(json['ingredients'] as List? ?? []),
+      isPriority: json['isPriority'] as bool? ?? false,
+      priorityIngredients: List<String>.from(json['priorityIngredients'] as List? ?? []),
+      steps: List<String>.from(json['steps'] as List? ?? []),
+      consumedItemIds: json['consumedItemIds'] != null ? List<String>.from(json['consumedItemIds'] as List) : null,
+      isApproved: json['isApproved'] as bool? ?? false,
+    );
+  }
 }

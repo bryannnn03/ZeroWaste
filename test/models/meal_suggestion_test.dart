@@ -332,5 +332,73 @@ void main() {
         expect(meal.priorityIngredients, isEmpty);
       });
     });
+
+    group('serialization and null safety', () {
+      test('toJson returns expected map', () {
+        const meal = MealSuggestion(
+          id: 'meal-id',
+          name: 'Nasi Goreng',
+          timeMinutes: 20,
+          difficulty: DifficultyLevel.easy,
+          ingredients: ['Rice', 'Egg'],
+          isPriority: true,
+          priorityIngredients: ['Egg'],
+          steps: ['Fry egg.', 'Stir rice.'],
+          consumedItemIds: ['item-1'],
+          isApproved: true,
+        );
+        final json = meal.toJson();
+        expect(json['id'], 'meal-id');
+        expect(json['name'], 'Nasi Goreng');
+        expect(json['timeMinutes'], 20);
+        expect(json['difficulty'], 'easy');
+        expect(json['ingredients'], ['Rice', 'Egg']);
+        expect(json['isPriority'], isTrue);
+        expect(json['priorityIngredients'], ['Egg']);
+        expect(json['steps'], ['Fry egg.', 'Stir rice.']);
+        expect(json['consumedItemIds'], ['item-1']);
+        expect(json['isApproved'], isTrue);
+      });
+
+      test('fromJson parses standard structure correctly', () {
+        final raw = {
+          'id': 'meal-abc',
+          'name': 'Maggi Soup',
+          'timeMinutes': 10,
+          'difficulty': 'easy',
+          'ingredients': ['Maggi', 'Water'],
+          'isPriority': false,
+          'priorityIngredients': <String>[],
+          'steps': ['Boil water.', 'Add seasoning.'],
+          'consumedItemIds': ['item-2'],
+          'isApproved': false,
+        };
+        final meal = MealSuggestion.fromJson(raw);
+        expect(meal.id, 'meal-abc');
+        expect(meal.name, 'Maggi Soup');
+        expect(meal.timeMinutes, 10);
+        expect(meal.difficulty, DifficultyLevel.easy);
+        expect(meal.ingredients, ['Maggi', 'Water']);
+        expect(meal.isPriority, isFalse);
+        expect(meal.priorityIngredients, isEmpty);
+        expect(meal.steps, ['Boil water.', 'Add seasoning.']);
+        expect(meal.consumedItemIds, ['item-2']);
+        expect(meal.isApproved, isFalse);
+      });
+
+      test('fromJson handles null / missing fields safely', () {
+        final meal = MealSuggestion.fromJson({});
+        expect(meal.id, '');
+        expect(meal.name, '');
+        expect(meal.timeMinutes, 0);
+        expect(meal.difficulty, DifficultyLevel.medium);
+        expect(meal.ingredients, isEmpty);
+        expect(meal.isPriority, isFalse);
+        expect(meal.priorityIngredients, isEmpty);
+        expect(meal.steps, isEmpty);
+        expect(meal.consumedItemIds, isNull);
+        expect(meal.isApproved, isFalse);
+      });
+    });
   });
 }

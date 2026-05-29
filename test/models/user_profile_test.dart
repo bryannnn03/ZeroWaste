@@ -102,5 +102,48 @@ void main() {
         expect(percentage, 100.0);
       });
     });
+
+    group('serialization and null safety', () {
+      test('toJson returns expected map', () {
+        final profile = UserProfile(
+          name: 'Justin Tan',
+          email: 'justin@example.com',
+          itemsTracked: 42,
+          wasteReduced: 15,
+          expiryNotifications: true,
+        );
+        final json = profile.toJson();
+        expect(json['name'], 'Justin Tan');
+        expect(json['email'], 'justin@example.com');
+        expect(json['itemsTracked'], 42);
+        expect(json['wasteReduced'], 15);
+        expect(json['expiryNotifications'], isTrue);
+      });
+
+      test('fromJson parses standard structure correctly', () {
+        final raw = {
+          'name': 'Bob',
+          'email': 'bob@example.com',
+          'itemsTracked': 10,
+          'wasteReduced': 3,
+          'expiryNotifications': false,
+        };
+        final profile = UserProfile.fromJson(raw);
+        expect(profile.name, 'Bob');
+        expect(profile.email, 'bob@example.com');
+        expect(profile.itemsTracked, 10);
+        expect(profile.wasteReduced, 3);
+        expect(profile.expiryNotifications, isFalse);
+      });
+
+      test('fromJson handles null / missing fields safely', () {
+        final profile = UserProfile.fromJson({});
+        expect(profile.name, '');
+        expect(profile.email, '');
+        expect(profile.itemsTracked, 0);
+        expect(profile.wasteReduced, 0);
+        expect(profile.expiryNotifications, isTrue);
+      });
+    });
   });
 }

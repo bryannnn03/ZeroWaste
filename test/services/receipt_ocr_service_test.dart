@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zerowaste/services/receipt_ocr_service.dart';
 
@@ -348,6 +353,103 @@ void main() {
         });
         expect(item.unit, 'pcs');
       });
+    });
+  });
+
+  group('ReceiptOcrService.extractItems and fallbacks', () {
+    test('extractItems returns items on first-attempt success', () async {
+      final mockResponse = {
+        'choices': [
+          {
+            'message': {
+              'content': '```json\n[\n  {"name": "GDN WHT BRD", "quantity": 1, "unit": "loaf", "category": "Bakery", "estimated_expiry_days": 4}\n]\n```'
+            }
+          }
+        ]
+      };
+
+      await http.runWithClient(() async {
+        final items = await ReceiptOcrService.extractItems(
+          XFile.fromData(Uint8List.fromList([0, 1, 2, 3]), name: 'receipt.jpg'),
+        );
+        expect(items, hasLength(1));
+        expect(items.first.name, 'Gardenia White Bread'); // brand expanded & cleaned
+        expect(items.first.category, 'Bakery');
+      }, () => MockClient((request) async {
+        return http.Response(jsonEncode(mockResponse), 200);
+      }));
+    });
+
+    test('extractItems falls back to next model on 429/500 errors', () async {
+      int requestCount = 0;
+      final mockResponse = {
+        'choices': [
+          {
+            'message': {
+              'content': '[\n  {"name": "Milk", "quantity": 2, "unit": "bottle", "category": "Dairy", "estimated_expiry_days": 5}\n]'
+            }
+          }
+        ]
+      };
+
+      await http.runWithClient(() async {
+        final items = await ReceiptOcrService.extractItems(
+          XFile.fromData(Uint8List.fromList([0]), name: 'receipt.jpg'),
+        );
+        expect(items, hasLength(1));
+        expect(items.first.name, 'Milk');
+        expect(requestCount, 2); // 1st failed (429), 2nd succeeded (200)
+      }, () => MockClient((request) async {
+        requestCount++;
+        if (requestCount == 1) {
+          return http.Response('Rate limit exceeded', 429);
+        }
+        return http.Response(jsonEncode(mockResponse), 200);
+      }));
+    });
+
+    test('extractItems bubbles up 401 error immediately without fallback', () async {
+      int requestCount = 0;
+
+      await http.runWithClient(() async {
+        await expectLater(
+          () => ReceiptOcrService.extractItems(
+            XFile.fromData(Uint8List.fromList([0]), name: 'receipt.jpg'),
+          ),
+          throwsA(isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Invalid OpenRouter API key'),
+          )),
+        );
+        expect(requestCount, 1); // fails immediately
+      }, () => MockClient((request) async {
+        requestCount++;
+        return http.Response('Unauthorized', 401);
+      }));
+    });
+
+    test('extractItems filters out non-food items', () async {
+      final mockResponse = {
+        'choices': [
+          {
+            'message': {
+              'content': '[\n  {"name": "Gardenia Bread", "quantity": 1, "unit": "loaf", "category": "Bakery", "estimated_expiry_days": 4},\n  {"name": "Colgate Toothpaste", "quantity": 1, "unit": "box", "category": "Other", "estimated_expiry_days": 180}\n]'
+            }
+          }
+        ]
+      };
+
+      await http.runWithClient(() async {
+        final items = await ReceiptOcrService.extractItems(
+          XFile.fromData(Uint8List.fromList([0]), name: 'receipt.png'),
+        );
+        expect(items, hasLength(1));
+        expect(items.first.name, 'Gardenia Bread');
+        // toothpaste is on the non-food blocklist, so it should be filtered out
+      }, () => MockClient((request) async {
+        return http.Response(jsonEncode(mockResponse), 200);
+      }));
     });
   });
 }

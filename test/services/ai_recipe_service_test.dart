@@ -1,9 +1,34 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:zerowaste/supabase_client.dart';
 import 'package:zerowaste/services/ai_recipe_service.dart';
 import 'package:zerowaste/models/food_item.dart';
 import 'package:zerowaste/models/meal_suggestion.dart';
 
+class MockSupabaseClient extends Mock implements SupabaseClient {}
+class MockGoTrueClient extends Mock implements GoTrueClient {}
+class MockUser extends Mock implements User {}
+
 void main() {
+  late MockSupabaseClient mockSupabase;
+  late MockGoTrueClient mockAuth;
+  late MockUser mockUser;
+
+  setUp(() {
+    mockSupabase = MockSupabaseClient();
+    mockAuth = MockGoTrueClient();
+    mockUser = MockUser();
+    when(() => mockSupabase.auth).thenReturn(mockAuth);
+    when(() => mockAuth.currentUser).thenReturn(mockUser);
+    when(() => mockUser.id).thenReturn('fake-user-id');
+    when(() => mockSupabase.from(any())).thenThrow(const PostgrestException(message: 'Mock DB error'));
+    supabase = mockSupabase;
+  });
+
   group('AiRecipeService', () {
     group('generatedRecipes static list', () {
       setUp(() {
@@ -264,6 +289,92 @@ void main() {
             .toList();
         expect(priorityIngredients, isEmpty);
       });
+    });
+  });
+
+  group('AiRecipeService.generateRecipe and API fallbacks', () {
+    const inputItems = [
+      FoodItem(
+        id: 'uuid-1',
+        name: 'Gardenia White Bread',
+        category: 'Bakery',
+        quantity: 1,
+        unit: 'loaf',
+        expiresOn: 'Jun 2, 2026',
+        daysUntilExpiry: 4,
+        urgency: UrgencyLevel.soon,
+      ),
+    ];
+
+    test('generateRecipe parses markdown-fenced JSON and builds MealSuggestion', () async {
+      final mockResponse = {
+        'choices': [
+          {
+            'message': {
+              'content': '```json\n{\n  "name": "Nasi Goreng Kampung",\n  "timeMinutes": 20,\n  "difficulty": "easy",\n  "ingredients": ["2 cups rice", "1 egg"],\n  "used_inventory_ids": ["uuid-1"],\n  "steps": ["Beat egg.", "Stir fry."]\n}\n```'
+            }
+          }
+        ]
+      };
+
+      await http.runWithClient(() async {
+        final suggestion = await AiRecipeService.generateRecipe(inputItems);
+        expect(suggestion.name, 'Nasi Goreng Kampung');
+        expect(suggestion.timeMinutes, 20);
+        expect(suggestion.difficulty, DifficultyLevel.easy);
+        expect(suggestion.ingredients, ['2 cups rice', '1 egg']);
+        expect(suggestion.steps, ['Beat egg.', 'Stir fry.']);
+        expect(suggestion.consumedItemIds, ['uuid-1']);
+        expect(AiRecipeService.generatedRecipes.first.name, 'Nasi Goreng Kampung');
+      }, () => MockClient((request) async {
+        return http.Response(jsonEncode(mockResponse), 200);
+      }));
+    });
+
+    test('generateRecipe falls back through the models list on failure', () async {
+      int requestCount = 0;
+      final mockResponse = {
+        'choices': [
+          {
+            'message': {
+              'content': '{\n  "name": "Sardine Curry",\n  "timeMinutes": 15,\n  "difficulty": "medium",\n  "ingredients": ["1 tin sardines"],\n  "used_inventory_ids": ["uuid-1"],\n  "steps": ["Heat pan.", "Simmer."]\n}'
+            }
+          }
+        ]
+      };
+
+      await http.runWithClient(() async {
+        final suggestion = await AiRecipeService.generateRecipe(inputItems);
+        expect(suggestion.name, 'Sardine Curry');
+        expect(requestCount, 2); // 1st failed, 2nd model succeeded
+      }, () => MockClient((request) async {
+        requestCount++;
+        if (requestCount == 1) {
+          return http.Response('Internal Server Error', 500);
+        }
+        return http.Response(jsonEncode(mockResponse), 200);
+      }));
+    });
+
+    test('generateRecipe splits instructions text if steps array is missing', () async {
+      final mockResponse = {
+        'choices': [
+          {
+            'message': {
+              'content': '{\n  "name": "Simple Toast",\n  "timeMinutes": 5,\n  "difficulty": "easy",\n  "ingredients": ["1 slice bread"],\n  "used_inventory_ids": ["uuid-1"],\n  "instructions": "1. Toast bread. 2. Butter it."\n}'
+            }
+          }
+        ]
+      };
+
+      await http.runWithClient(() async {
+        final suggestion = await AiRecipeService.generateRecipe(inputItems);
+        expect(suggestion.steps, hasLength(2));
+        expect(suggestion.steps[0], 'Toast bread.');
+        expect(suggestion.steps[1], 'Butter it.');
+      }, () => MockClient((request) async {
+        return http.Response(jsonEncode(mockResponse), 200);
+      }));
     });
   });
 }

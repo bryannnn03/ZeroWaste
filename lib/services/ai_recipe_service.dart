@@ -226,10 +226,10 @@ JSON format:
     }
 
     // ── Persist to Supabase ─────────────────────────────────────────────
-    final userId = supabase.auth.currentUser?.id;
     String persistedId = DateTime.now().millisecondsSinceEpoch.toString();
 
     try {
+      final userId = supabase.auth.currentUser?.id;
       // 1. Insert into meal_recommendations and get the generated UUID back
       final mealInsert = await supabase
           .from('meal_recommendations')

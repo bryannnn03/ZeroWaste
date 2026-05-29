@@ -51,6 +51,8 @@ String _cleanItemName(String raw) {
     r'\bDUTCH\s*LADY\b': 'Dutch Lady',
     r'\bKIKKOMAN\b': 'Kikkoman',
     r'\bLEA\s*&?\s*PERRINS\b': 'Lea & Perrins',
+    r'\bWHT\b': 'White',
+    r'\bBRD\b': 'Bread',
   };
 
   String name = raw;

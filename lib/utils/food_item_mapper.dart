@@ -12,7 +12,10 @@ import '../models/food_item.dart';
 FoodItem rowToFoodItem(Map<String, dynamic> row) {
   final expiry =
       DateTime.tryParse(row['expiry_date'] as String? ?? '') ?? DateTime.now();
-  final days = expiry.difference(DateTime.now()).inDays;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final expiryDate = DateTime(expiry.year, expiry.month, expiry.day);
+  final days = expiryDate.difference(today).inDays;
 
   final UrgencyLevel urgency;
   if (days <= 2) {

@@ -151,5 +151,58 @@ void main() {
         expect(notifications.every((n) => n.read), isTrue);
       });
     });
+
+    group('serialization and null safety', () {
+      test('toJson returns expected map', () {
+        final notif = AppNotification(
+          id: 'notif-123',
+          title: 'Expiring Item',
+          message: 'Detail message',
+          timeAgo: '1h ago',
+          type: NotificationType.urgent,
+          linkText: 'Resolve',
+          read: true,
+        );
+        final json = notif.toJson();
+        expect(json['id'], 'notif-123');
+        expect(json['title'], 'Expiring Item');
+        expect(json['message'], 'Detail message');
+        expect(json['timeAgo'], '1h ago');
+        expect(json['type'], 'urgent');
+        expect(json['linkText'], 'Resolve');
+        expect(json['read'], isTrue);
+      });
+
+      test('fromJson parses standard structure correctly', () {
+        final raw = {
+          'id': 'notif-abc',
+          'title': 'New Item',
+          'message': 'Parsed correctly',
+          'timeAgo': 'now',
+          'type': 'warning',
+          'linkText': null,
+          'read': false,
+        };
+        final notif = AppNotification.fromJson(raw);
+        expect(notif.id, 'notif-abc');
+        expect(notif.title, 'New Item');
+        expect(notif.message, 'Parsed correctly');
+        expect(notif.timeAgo, 'now');
+        expect(notif.type, NotificationType.warning);
+        expect(notif.linkText, isNull);
+        expect(notif.read, isFalse);
+      });
+
+      test('fromJson handles null / missing fields safely', () {
+        final notif = AppNotification.fromJson({});
+        expect(notif.id, '');
+        expect(notif.title, '');
+        expect(notif.message, '');
+        expect(notif.timeAgo, '');
+        expect(notif.type, NotificationType.info);
+        expect(notif.linkText, isNull);
+        expect(notif.read, isFalse);
+      });
+    });
   });
 }

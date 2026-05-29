@@ -50,7 +50,10 @@ class NotificationService {
         final expiry = DateTime.tryParse(row['expiry_date'] as String? ?? '');
         if (expiry == null) continue;
 
-        final days = expiry.difference(DateTime.now()).inDays;
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final expiryDate = DateTime(expiry.year, expiry.month, expiry.day);
+        final days = expiryDate.difference(today).inDays;
         
         if (days < 0) {
            continue; // already expired

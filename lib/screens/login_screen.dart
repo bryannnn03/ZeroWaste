@@ -350,8 +350,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         delay: const Duration(milliseconds: 300),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text(
                                 "Don't have an account? ",
