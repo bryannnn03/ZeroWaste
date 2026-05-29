@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Reduce Food Waste, Manage Smarter',
+                              'Track the Fresh, Scrap the Waste',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
